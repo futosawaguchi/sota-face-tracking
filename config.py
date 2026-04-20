@@ -18,10 +18,10 @@ SEND_INTERVAL = 0.1
 DEAD_ZONE = 40
 
 # ローパスフィルタ係数（0.1〜0.3推奨：小さいほど滑らか）
-SMOOTHING_ALPHA = 0.2
+SMOOTHING_ALPHA = 0.1
 
 # 最小送信角度変化（この値未満の変化は送信しない）
-MIN_ANGLE_CHANGE = 5.0
+MIN_ANGLE_CHANGE = 15.0
 
 # 首の可動範囲
 HEAD_Y_MAX = 300.0   # 左右
