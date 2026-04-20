@@ -10,6 +10,7 @@ from config import (
     HEAD_P_MAX,
     SEARCH_ANGLES,
     SEARCH_INTERVAL,
+    SEND_INTERVAL,
 )
 from sota import controller
 
@@ -18,8 +19,9 @@ _tracking_enabled = True
 _last_send_time   = 0.0
 _prev_yaw         = 0.0
 _prev_pitch       = 0.0
-_searching        = False  # キョロキョロ中フラグ
+_searching        = False
 _search_thread    = None
+_lock             = threading.Lock()
 
 # ========== Haar Cascade 初期化 ==========
 _face_cascade = cv2.CascadeClassifier(
@@ -27,78 +29,69 @@ _face_cascade = cv2.CascadeClassifier(
 )
 
 def set_tracking(enabled: bool):
-    """トラッキングのON/OFFを切り替える"""
-    global _tracking_enabled
+    global _tracking_enabled, _searching
     _tracking_enabled = enabled
+    if not enabled:
+        _searching = False
 
 def is_tracking() -> bool:
     return _tracking_enabled
 
-def process_frame(frame: np.ndarray) -> tuple[np.ndarray, list]:
-    """
-    フレームを受け取り、顔検出・角度計算・SOTA送信を行う
-
-    Parameters
-    ----------
-    frame : np.ndarray  カメラから取得したフレーム
-
-    Returns
-    -------
-    frame : np.ndarray  描画済みフレーム
-    faces : list        検出された顔のリスト [(x, y, w, h), ...]
-    """
+def process_frame(frame: np.ndarray):
     global _prev_yaw, _prev_pitch, _last_send_time, _searching, _search_thread
 
     h, w = frame.shape[:2]
     cx, cy = w // 2, h // 2
 
     # 中心十字線
-    cv2.line(frame, (cx - 20, cy), (cx + 20, cy), (255, 0, 0), 1)
-    cv2.line(frame, (cx, cy - 20), (cx, cy + 20), (255, 0, 0), 1)
+    cv2.line(frame, (cx - 20, cy), (cx + 20, cy), (180, 180, 180), 1)
+    cv2.line(frame, (cx, cy - 20), (cx, cy + 20), (180, 180, 180), 1)
 
-    # グレースケール変換・顔検出
+    # 顔検出
     gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = _face_cascade.detectMultiScale(
-        gray, scaleFactor=1.1, minNeighbors=5
+        gray, scaleFactor=1.1, minNeighbors=5, minSize=(80, 80)
     )
 
     if len(faces) == 0:
-        # 顔が消えたらキョロキョロ開始
-        if _tracking_enabled and not _searching:
-            _searching = True
-            _search_thread = threading.Thread(
-                target=_search_loop, daemon=True
-            )
-            _search_thread.start()
+        # 顔消失 → キョロキョロ開始（重複起動しない）
+        if _tracking_enabled:
+            with _lock:
+                if not _searching:
+                    _searching = True
+                    _search_thread = threading.Thread(
+                        target=_search_loop, daemon=True
+                    )
+                    _search_thread.start()
 
         cv2.putText(frame, "No Face", (10, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (100, 100, 100), 2)
         return frame, []
 
-    # 顔が見つかったらキョロキョロ停止
-    _searching = False
+    # 顔が見つかった → キョロキョロ停止
+    with _lock:
+        _searching = False
 
-    # 一番大きい顔を選択
+    # 一番大きい顔
     x, y, fw, fh = max(faces, key=lambda f: f[2] * f[3])
     face_cx = x + fw // 2
     face_cy = y + fh // 2
 
     # 描画
-    cv2.rectangle(frame, (x, y), (x + fw, y + fh), (0, 255, 0), 2)
-    cv2.circle(frame, (face_cx, face_cy), 5, (0, 255, 0), -1)
-    cv2.putText(frame, f"Face ({face_cx}, {face_cy})", (x, y - 10),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-    cv2.putText(frame, f"Faces: {len(faces)}", (10, 30),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+    cv2.rectangle(frame, (x, y), (x + fw, y + fh), (80, 80, 80), 2)
+    cv2.circle(frame, (face_cx, face_cy), 4, (80, 80, 80), -1)
+    cv2.putText(frame, f"tracking", (x, y - 10),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.55, (80, 80, 80), 1)
 
     if not _tracking_enabled:
         return frame, list(faces)
 
-    # ========== 角度計算 ==========
+    # ========== 送信間隔チェック ==========
     now = time.time()
-    if now - _last_send_time < 0.1:
+    if now - _last_send_time < SEND_INTERVAL:
         return frame, list(faces)
 
+    # ========== 角度計算 ==========
     dx = face_cx - cx
     dy = face_cy - cy
 
@@ -110,16 +103,20 @@ def process_frame(frame: np.ndarray) -> tuple[np.ndarray, list]:
     raw_yaw   = -(dx / (w / 2)) * HEAD_Y_MAX
     raw_pitch =  (dy / (h / 2)) * HEAD_P_MAX
 
-    # ローパスフィルタ（指数移動平均）
+    # ローパスフィルタ
     yaw   = SMOOTHING_ALPHA * raw_yaw   + (1 - SMOOTHING_ALPHA) * _prev_yaw
     pitch = SMOOTHING_ALPHA * raw_pitch + (1 - SMOOTHING_ALPHA) * _prev_pitch
 
-    # 最小変化量チェック（振動抑制）
+    # 最小変化量チェック
     if abs(yaw - _prev_yaw) < MIN_ANGLE_CHANGE and \
        abs(pitch - _prev_pitch) < MIN_ANGLE_CHANGE:
         return frame, list(faces)
 
-    # 送信
+    # キョロキョロ中は送信しない
+    with _lock:
+        if _searching:
+            return frame, list(faces)
+
     controller.send(servo={
         "Head_Y": int(round(yaw)),
         "Head_P": int(round(pitch)),
@@ -137,16 +134,21 @@ def _search_loop():
     global _searching, _prev_yaw, _prev_pitch
 
     for angle in SEARCH_ANGLES:
-        if not _searching:
-            return
+        with _lock:
+            if not _searching:
+                return
         controller.send(servo={"Head_Y": angle, "Head_P": 0})
         _prev_yaw   = float(angle)
         _prev_pitch = 0.0
         time.sleep(SEARCH_INTERVAL)
 
     # 見つからなければ正面に戻る
-    if _searching:
+    with _lock:
+        still_searching = _searching
+
+    if still_searching:
         controller.send(servo={"Head_Y": 0, "Head_P": 0})
         _prev_yaw   = 0.0
         _prev_pitch = 0.0
-        _searching  = False
+        with _lock:
+            _searching = False
