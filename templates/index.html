@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SOTA Controller</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="wrapper">
+
+  <!-- ヘッダー -->
+  <header>
+    <div class="logo">SOTA <span>controller</span></div>
+    <div class="status-badge">
+      <div class="status-dot"></div>
+      <span id="status-text">connected</span>
+    </div>
+  </header>
+
+  <!-- カメラ映像 -->
+  <section class="camera-section">
+    <div class="section-label">Camera Feed</div>
+    <div class="camera-wrapper">
+      <img src="/video_feed" alt="camera feed">
+      <div class="camera-overlay">
+        <div class="corner tl"></div>
+        <div class="corner tr"></div>
+        <div class="corner bl"></div>
+        <div class="corner br"></div>
+      </div>
+      <!-- トラッキングトグル -->
+      <button class="tracking-toggle active" id="tracking-btn" onclick="toggleTracking()">
+        <div class="t-dot"></div>
+        <span id="tracking-label">Tracking ON</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- コントロール -->
+  <div class="controls-grid">
+
+    <!-- LED -->
+    <div class="card">
+      <div class="card-title">LED Color</div>
+      <div class="led-grid">
+        <button class="led-btn active" data-color="green" onclick="setLED('green')">
+          <div class="led-dot"></div>
+          <span>green</span>
+        </button>
+        <button class="led-btn" data-color="blue" onclick="setLED('blue')">
+          <div class="led-dot"></div>
+          <span>blue</span>
+        </button>
+        <button class="led-btn" data-color="red" onclick="setLED('red')">
+          <div class="led-dot"></div>
+          <span>red</span>
+        </button>
+        <button class="led-btn" data-color="white" onclick="setLED('white')">
+          <div class="led-dot"></div>
+          <span>white</span>
+        </button>
+        <button class="led-btn" data-color="off" onclick="setLED('off')">
+          <div class="led-dot"></div>
+          <span>off</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- モーション -->
+    <div class="card">
+      <div class="card-title">Motion</div>
+      <div class="motion-grid">
+        <button class="motion-btn" data-motion="nod" onclick="doMotion('nod')">
+          <span class="motion-icon">↕</span> nod
+        </button>
+        <button class="motion-btn" data-motion="shake_head" onclick="doMotion('shake_head')">
+          <span class="motion-icon">↔</span> shake
+        </button>
+        <button class="motion-btn" data-motion="right_hand_up" onclick="doMotion('right_hand_up')">
+          <span class="motion-icon">🤚</span> right up
+        </button>
+        <button class="motion-btn" data-motion="left_hand_up" onclick="doMotion('left_hand_up')">
+          <span class="motion-icon">🤚</span> left up
+        </button>
+        <button class="motion-btn" data-motion="both_hands_up" onclick="doMotion('both_hands_up')">
+          <span class="motion-icon">🙌</span> both up
+        </button>
+        <button class="motion-btn" data-motion="bye_bye" onclick="doMotion('bye_bye')">
+          <span class="motion-icon">👋</span> bye bye
+        </button>
+      </div>
+
+      <button class="reset-btn" onclick="resetPosture()">↺ reset posture</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- トースト -->
+<div id="toast"></div>
+
+<script>
+  let trackingEnabled = true;
+  let currentLED = 'green';
+
+  // ========== トースト ==========
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+  }
+
+  // ========== トラッキング ==========
+  function toggleTracking() {
+    trackingEnabled = !trackingEnabled;
+    fetch('/api/tracking', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: trackingEnabled })
+    });
+    const btn   = document.getElementById('tracking-btn');
+    const label = document.getElementById('tracking-label');
+    if (trackingEnabled) {
+      btn.classList.add('active');
+      label.textContent = 'Tracking ON';
+      showToast('Tracking enabled');
+    } else {
+      btn.classList.remove('active');
+      label.textContent = 'Tracking OFF';
+      showToast('Tracking disabled');
+    }
+  }
+
+  // ========== LED ==========
+  function setLED(color) {
+    currentLED = color;
+    fetch('/api/led', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ color })
+    });
+    document.querySelectorAll('.led-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.color === color);
+    });
+    showToast(`LED → ${color}`);
+  }
+
+  // ========== モーション ==========
+  function doMotion(motion) {
+    fetch('/api/motion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ motion })
+    });
+    const btn = document.querySelector(`.motion-btn[data-motion="${motion}"]`);
+    if (btn) {
+      btn.classList.add('firing');
+      setTimeout(() => btn.classList.remove('firing'), 1000);
+    }
+    showToast(`Motion → ${motion}`);
+  }
+
+  // ========== リセット ==========
+  function resetPosture() {
+    fetch('/api/reset', { method: 'POST' });
+    showToast('Posture reset');
+  }
+</script>
+
+</body>
+</html>

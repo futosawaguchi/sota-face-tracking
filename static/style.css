@@ -1,0 +1,392 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap');
+
+/* ========== CSS変数 ========== */
+:root {
+  --bg:         #0a0a0f;
+  --surface:    #12121a;
+  --surface2:   #1a1a26;
+  --border:     #2a2a3f;
+  --accent:     #7c6cfc;
+  --accent2:    #fc6c8f;
+  --text:       #e8e8f0;
+  --text-muted: #6b6b8a;
+  --green:      #4cfc9a;
+  --blue:       #4cc8fc;
+  --red:        #fc4c6c;
+  --white:      #f0f0ff;
+  --radius:     12px;
+  --radius-lg:  20px;
+}
+
+/* ========== リセット ========== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Mono', monospace;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ========== 背景エフェクト ========== */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 20%, rgba(124,108,252,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 80% 80%, rgba(252,108,143,0.06) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ========== レイアウト ========== */
+.wrapper {
+  position: relative;
+  z-index: 1;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}
+
+/* ========== ヘッダー ========== */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 1.4rem;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.logo span {
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+/* ステータスバッジ */
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  border-radius: 999px;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* ========== カメラセクション ========== */
+.camera-section {
+  margin-bottom: 28px;
+}
+
+.section-label {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.camera-wrapper {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  aspect-ratio: 16/9;
+}
+
+.camera-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* カメラオーバーレイ */
+.camera-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.corner {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-color: var(--accent);
+  border-style: solid;
+  opacity: 0.6;
+}
+.corner.tl { top: 12px; left: 12px;  border-width: 2px 0 0 2px; }
+.corner.tr { top: 12px; right: 12px; border-width: 2px 2px 0 0; }
+.corner.bl { bottom: 12px; left: 12px;  border-width: 0 0 2px 2px; }
+.corner.br { bottom: 12px; right: 12px; border-width: 0 2px 2px 0; }
+
+/* トラッキングトグル（カメラ右上） */
+.tracking-toggle {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  pointer-events: all;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(10,10,15,0.75);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.tracking-toggle:hover { border-color: var(--accent); color: var(--text); }
+
+.tracking-toggle.active { border-color: var(--accent); color: var(--accent); }
+
+.tracking-toggle.active .t-dot {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.t-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+/* ========== コントロールグリッド ========== */
+.controls-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* ========== カード ========== */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  transition: border-color 0.2s;
+}
+
+.card:hover { border-color: #3a3a55; }
+
+.card-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+/* ========== LEDボタン ========== */
+.led-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.led-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.2s, box-shadow 0.2s;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.led-btn:hover {
+  transform: translateY(-2px);
+  color: var(--text);
+}
+
+.led-btn:active { transform: translateY(0); }
+
+.led-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  transition: box-shadow 0.2s;
+}
+
+.led-btn[data-color="green"]  .led-dot { background: var(--green); }
+.led-btn[data-color="blue"]   .led-dot { background: var(--blue); }
+.led-btn[data-color="red"]    .led-dot { background: var(--red); }
+.led-btn[data-color="white"]  .led-dot { background: #fff; }
+.led-btn[data-color="off"]    .led-dot { background: #333; border: 1px solid #444; }
+
+.led-btn.active[data-color="green"]  { border-color: var(--green);  box-shadow: 0 0 16px rgba(76,252,154,0.2); }
+.led-btn.active[data-color="blue"]   { border-color: var(--blue);   box-shadow: 0 0 16px rgba(76,200,252,0.2); }
+.led-btn.active[data-color="red"]    { border-color: var(--red);    box-shadow: 0 0 16px rgba(252,76,108,0.2); }
+.led-btn.active[data-color="white"]  { border-color: #fff;          box-shadow: 0 0 16px rgba(255,255,255,0.15);}
+.led-btn.active[data-color="off"]    { border-color: #555; }
+
+.led-btn.active .led-dot {
+  box-shadow: 0 0 12px currentColor;
+}
+
+/* ========== モーションボタン ========== */
+.motion-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.motion-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  cursor: pointer;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  transition: transform 0.15s, border-color 0.2s, color 0.2s, background 0.2s;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.motion-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  transform: translateY(-2px);
+}
+
+.motion-btn:active {
+  transform: translateY(0);
+  background: rgba(124,108,252,0.1);
+}
+
+.motion-btn.firing {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(124,108,252,0.1);
+}
+
+.motion-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* ========== リセットボタン ========== */
+.reset-btn {
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  letter-spacing: 0.05em;
+}
+
+.reset-btn:hover {
+  border-color: var(--accent2);
+  color: var(--accent2);
+  background: rgba(252,108,143,0.06);
+}
+
+/* ========== トースト通知 ========== */
+#toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 10px 20px;
+  font-size: 0.75rem;
+  color: var(--text);
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 100;
+}
+
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ========== レスポンシブ ========== */
+@media (max-width: 640px) {
+  .controls-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .led-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .motion-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .logo { font-size: 1.1rem; }
+
+  .camera-wrapper { aspect-ratio: 4/3; }
+}
+
+@media (max-width: 400px) {
+  .led-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
