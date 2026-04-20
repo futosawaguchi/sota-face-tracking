@@ -12,16 +12,16 @@ CAMERA_INDEX = int(os.getenv("CAMERA_INDEX", 0))
 
 # ========== フェイストラッキング設定 ==========
 # 送信間隔（秒）
-SEND_INTERVAL = 0.1
+SEND_INTERVAL = 0.4
 
 # デッドゾーン（ピクセル）：この範囲内のズレは無視
-DEAD_ZONE = 40
+DEAD_ZONE = 30
 
 # ローパスフィルタ係数（0.1〜0.3推奨：小さいほど滑らか）
-SMOOTHING_ALPHA = 0.1
+SMOOTHING_ALPHA = 0.0
 
 # 最小送信角度変化（この値未満の変化は送信しない）
-MIN_ANGLE_CHANGE = 15.0
+MIN_ANGLE_CHANGE = 5.0
 
 # 首の可動範囲
 HEAD_Y_MAX = 300.0   # 左右
